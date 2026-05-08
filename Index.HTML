@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>System Data Adapter</title>
+
+  <style>
+
+    body{
+      font-family: Arial, sans-serif;
+      background:#eef2f6;
+      margin:0;
+      padding:24px;
+      color:#1f2937;
+    }
+
+    .app{
+      max-width:1300px;
+      margin:auto;
+      background:white;
+      border-radius:6px;
+      box-shadow:0 4px 18px rgba(0,0,0,0.12);
+      overflow:hidden;
+    }
+
+    .excel-header{
+      background:#d9e2ec;
+      border-top:3px solid #f97316;
+      border-bottom:1px solid #b8c3cf;
+      text-align:center;
+      padding:18px 10px 24px 10px;
+      font-size:22px;
+      font-weight:bold;
+      color:#111827;
+    }
+
+    .content{
+      padding:24px;
+    }
+
+    .section{
+      margin-top:18px;
+      padding:18px;
+      border:1px solid #d1d5db;
+      border-radius:8px;
+      background:#fafcff;
+    }
+
+    input,
+    button{
+      padding:10px;
+      border-radius:6px;
+      border:1px solid #cbd5e1;
+      margin-right:8px;
+      margin-top:6px;
+    }
+
+    button{
+      background:#f97316;
+      color:white;
+      border:none;
+      cursor:pointer;
+      font-weight:bold;
+    }
+
+    button:hover{
+      background:#ea580c;
+    }
+
+    textarea{
+      width:100%;
+      height:170px;
+      margin-top:10px;
+      border-radius:8px;
+      padding:10px;
+      font-family:Consolas, monospace;
+      box-sizing:border-box;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:12px;
+      font-size:12px;
+    }
+
+    th,
+    td{
+      border:1px solid #d1d5db;
+      padding:6px;
+      text-align:left;
+      white-space:nowrap;
+    }
+
+    th{
+      background:#d9e2ec;
+      color:#111827;
+      font-weight:bold;
+    }
+
+    .status{
+      margin-top:10px;
+      font-weight:bold;
+      color:#047857;
+    }
+
+    .note{
+      color:#92400e;
+      font-size:13px;
+      margin-top:8px;
+    }
+
+    .summary-box{
+      margin-top:14px;
+      display:flex;
+      gap:30px;
+      background:#e5edf5;
+      border:1px solid #b8c3cf;
+      padding:14px;
+      border-radius:8px;
+      font-size:15px;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<div class="app">
+
+  <div class="excel-header">
+    System Data Adapter
+  </div>
+
+  <div class="content">
+
+    <div class="section">
+
+      <input
+        type="file"
+        id="fileInput"
+        accept=".txt,.csv"
+      >
+
+      <div class="note">
+        The platform automatically uses today's date
+        for Move Time conversion.
+      </div>
+
+      <div id="fileStatus" class="status"></div>
+
+    </div>
+
+    <div class="section">
+
+      <button onclick="treatFile()">
+        Apply Treatment
+      </button>
+
+      <button onclick="downloadTXT()">
+        Download Treated TXT
+      </button>
+
+      <div id="treatmentStatus" class="status"></div>
+
+      <div class="summary-box">
+
+        <div>
+          <strong>Total Moves:</strong>
+          <span id="totalMoves">0</span>
+        </div>
+
+        <div>
+          <strong>Operations Hours:</strong>
+          <span id="operationsHours">0</span>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="section">
+
+      <h3>Raw TXT Preview</h3>
+
+      <textarea
+        id="rawText"
+        readonly
+      ></textarea>
+
+    </div>
+
+    <div class="section">
+
+      <h3>Treated Data Preview</h3>
+
+      <div id="tableContainer">
+        No data treated yet.
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+let rawContent = "";
+let treatedData = [];
+
+const finalHeaders = [
+
+  "Carrier",
+  "Carrier Name",
+  "Move Kind",
+  "Conatiner Number",
+  "Length",
+  "Move Stage",
+  "Current Position",
+  "Planned Position",
+  "Queue",
+  "Sequence",
+  "Move Time",
+  "Pow Name",
+  "Planner",
+  "Unit Weight (kg)",
+  "Unit is Hazardous?",
+  "Unit POD",
+  "Unit is live Reefer ?",
+  "Unit is Special Stow?",
+  "Unit Is OOG?",
+  "Freight Kind",
+  "Category",
+  "Line Operator",
+  "Move To",
+  "Move From",
+  "Move Distance"
+
+];
+
+document
+.getElementById("fileInput")
+.addEventListener("change", function(event){
+
+  const file = event.target.files[0];
+
+  if(!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(e){
+
+    rawContent = e.target.result;
+
+    document.getElementById("rawText").value =
+      rawContent.slice(0,20000);
+
+    document.getElementById("fileStatus").textContent =
+      "File loaded: " + file.name;
+
+    treatedData = [];
+
+  };
+
+  reader.readAsText(file);
+
+});
+
+function treatFile(){
+
+  if(!rawContent){
+
+    alert("Please upload a TXT file first.");
+
+    return;
+
+  }
+
+  const refDate = new Date();
+
+  treatedData =
+    treatXpsFile(rawContent, refDate);
+
+  renderTable();
+
+  updateSummary();
+
+  document.getElementById("treatmentStatus").textContent =
+    "Treatment completed: " +
+    treatedData.length +
+    " rows.";
+
+}
+
+function treatXpsFile(text, refDate){
+
+  const lines = text
+    .split(/\r?\n/)
+    .filter(line => line.trim() !== "");
+
+  if(lines.length <= 1) return [];
+
+  // Remove first TXT line (header)
+  const dataLines = lines.slice(1);
+
+  const rows = dataLines.map(line => {
+
+    const c = splitLine(line);
+
+    const moveKind =
+      String(c[2] || "")
+      .toUpperCase() === "DSCH"
+      ? "Discharge"
+      : "Load";
+
+    return {
+
+      "Carrier":
+        c[0] || "",
+
+      "Carrier Name":
+        c[1] || "",
+
+      "Move Kind":
+        moveKind,
+
+      "Conatiner Number":
+        c[3] || "",
+
+      "Length":
+        c[4] || "",
+
+      "Move Stage":
+        c[5] || "",
+
+      "Current Position":
+        cleanPosition(c[6]),
+
+      "Planned Position":
+        cleanPosition(c[7]),
+
+      "Queue":
+        c[8] || "",
+
+      "Sequence":
+        c[9] || "",
+
+      "Move Time":
+        convertMoveTimeToExcelNumber(
+          c[10],
+          refDate,
+          dataLines
+        ),
+
+      "Pow Name":
+        c[11] || "",
+
+      "Planner":
+        c[12] || "",
+
+      "Unit Weight (kg)":
+        c[13] || "",
+
+      "Unit is Hazardous?":
+        c[14] === ""
+        ? "false"
+        : "true",
+
+      "Unit POD":
+        c[15] || "",
+
+      "Unit is live Reefer ?":
+        c[16] === "LRFR"
+        ? "true"
+        : "false",
+
+      "Unit is Special Stow?":
+        c[17] || "",
+
+      "Unit Is OOG?":
+        c[18] === "Y"
+        ? "true"
+        : "false",
+
+      "Freight Kind":
+        c[19] === "LCL"
+        ? "FCL"
+        : c[19],
+
+      "Category":
+        c[20] || "",
+
+      "Line Operator":
+        c[21] || "",
+
+      "Move To":
+        cleanPosition(c[22]),
+
+      "Move From":
+        cleanPosition(c[23]),
+
+      "Move Distance":
+        cleanDistance(c[24])
+
+    };
+
+  });
+
+  return rows;
+
+}
+
+function splitLine(line){
+
+  if(line.includes("\t"))
+    return line.split("\t");
+
+  if(line.includes(";"))
+    return line.split(";");
+
+  return line.split(",");
+
+}
+
+function cleanPosition(value){
+
+  return String(value || "")
+    .replaceAll("?","")
+    .replaceAll(".","")
+    .trim();
+
+}
+
+function cleanDistance(value){
+
+  return String(value || "")
+    .replaceAll("M","")
+    .replaceAll(".","")
+    .trim();
+
+}
+
+function normalizeMoveTimeCode(moveTime){
+
+  let text = String(moveTime || "")
+    .replace("+","")
+    .trim()
+    .toUpperCase();
+
+  if(text === "") return "";
+
+  const day =
+    text.substring(0,2);
+
+  const timePart =
+    text.substring(2)
+    .padStart(4,"0");
+
+  return day + timePart;
+
+}
+
+function convertMoveTimeToExcelNumber(
+  moveTime,
+  refDate,
+  allRows
+){
+
+  const code =
+    normalizeMoveTimeCode(moveTime);
+
+  if(!code) return "";
+
+  const dayCode =
+    code.substring(0,2);
+
+  const hour =
+    Number(code.substring(2,4));
+
+  const minute =
+    Number(code.substring(4,6));
+
+  const dayOffsets =
+    buildCompactDayOffsets(allRows);
+
+  if(!(dayCode in dayOffsets))
+    return "";
+
+  const baseDate =
+    new Date(refDate);
+
+  baseDate.setHours(0,0,0,0);
+
+  const resultDate =
+    new Date(baseDate);
+
+  resultDate.setDate(
+    baseDate.getDate() +
+    dayOffsets[dayCode]
+  );
+
+  resultDate.setHours(
+    hour,
+    minute,
+    0,
+    0
+  );
+
+  return dateToExcelSerial(resultDate);
+
+}
+
+function buildCompactDayOffsets(allRows){
+
+  const dayOrder = [
+    "SU",
+    "MO",
+    "TU",
+    "WE",
+    "TH",
+    "FR",
+    "SA"
+  ];
+
+  const usedDays = [...new Set(
+
+    allRows
+      .map(line => {
+
+        const cols =
+          splitLine(line);
+
+        return normalizeMoveTimeCode(
+          cols[10] || ""
+        ).substring(0,2);
+
+      })
+      .filter(day =>
+        dayOrder.includes(day)
+      )
+
+  )];
+
+  if(usedDays.length === 0)
+    return {};
+
+  let bestOffsets = {};
+  let bestSpan = 999;
+
+  usedDays.forEach(startDay => {
+
+    const startIndex =
+      dayOrder.indexOf(startDay);
+
+    const offsets = {};
+
+    let maxOffset = 0;
+
+    usedDays.forEach(day => {
+
+      const dayIndex =
+        dayOrder.indexOf(day);
+
+      let offset =
+        dayIndex - startIndex;
+
+      if(offset < 0)
+        offset += 7;
+
+      offsets[day] = offset;
+
+      if(offset > maxOffset)
+        maxOffset = offset;
+
+    });
+
+    if(maxOffset < bestSpan){
+
+      bestSpan = maxOffset;
+
+      bestOffsets = offsets;
+
+    }
+
+  });
+
+  return bestOffsets;
+
+}
+
+function dateToExcelSerial(date){
+
+  const excelEpoch =
+    new Date(1899,11,30);
+
+  const millisecondsPerDay =
+    24 * 60 * 60 * 1000;
+
+  return (
+    (date - excelEpoch) /
+    millisecondsPerDay
+  );
+
+}
+
+function updateSummary(){
+
+  const totalMoves =
+    treatedData.length;
+
+  const moveTimes =
+    treatedData
+      .map(row =>
+        Number(row["Move Time"])
+      )
+      .filter(v =>
+        !Number.isNaN(v) &&
+        v > 0
+      );
+
+  let operationsHours = 0;
+
+  if(moveTimes.length > 0){
+
+    const minMoveTime =
+      Math.min(...moveTimes);
+
+    const maxMoveTime =
+      Math.max(...moveTimes);
+
+    operationsHours =
+      (maxMoveTime - minMoveTime)
+      * 24;
+
+  }
+
+  document
+  .getElementById("totalMoves")
+  .textContent = totalMoves;
+
+  document
+  .getElementById("operationsHours")
+  .textContent =
+    operationsHours.toFixed(1);
+
+}
+
+function renderTable(){
+
+  if(treatedData.length === 0){
+
+    document
+    .getElementById("tableContainer")
+    .innerHTML =
+      "No data treated yet.";
+
+    return;
+
+  }
+
+  const previewRows =
+    treatedData.slice(0,50);
+
+  let html =
+    "<table><tr>";
+
+  finalHeaders.forEach(header => {
+
+    html +=
+      "<th>" +
+      header +
+      "</th>";
+
+  });
+
+  html += "</tr>";
+
+  previewRows.forEach(row => {
+
+    html += "<tr>";
+
+    finalHeaders.forEach(header => {
+
+      html +=
+        "<td>" +
+        (row[header] || "") +
+        "</td>";
+
+    });
+
+    html += "</tr>";
+
+  });
+
+  html += "</table>";
+
+  document
+  .getElementById("tableContainer")
+  .innerHTML = html;
+
+}
+
+function downloadTXT(){
+
+  if(treatedData.length === 0){
+
+    alert("No treated data.");
+
+    return;
+
+  }
+
+  let txtContent = "";
+
+  // HEADER
+  txtContent +=
+    finalHeaders.join("\t") +
+    "\n";
+
+  // DATA
+  treatedData.forEach(row => {
+
+    const values =
+      finalHeaders.map(header => {
+
+        return String(
+          row[header] || ""
+        ).trim();
+
+      });
+
+    txtContent +=
+      values.join("\t") +
+      "\n";
+
+  });
+
+  const blob = new Blob(
+
+    [txtContent],
+
+    {
+      type:
+      "text/plain;charset=utf-8;"
+    }
+
+  );
+
+  const link =
+    document.createElement("a");
+
+  link.href =
+    URL.createObjectURL(blob);
+
+  const firstRow =
+    treatedData[0] || {};
+
+  const carrier =
+    (firstRow["Carrier"] || "Unknown")
+    .trim();
+
+  const carrierName =
+    (firstRow["Carrier Name"] || "Unknown")
+    .trim();
+
+  link.download =
+    `${carrier} ${carrierName} Update.txt`;
+
+  link.click();
+
+}
+
+</script>
+
+</body>
+</html>
