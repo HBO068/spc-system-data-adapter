@@ -6,7 +6,6 @@
   <title>System Data Adapter</title>
 
   <style>
-
     body{
       font-family: Arial, sans-serif;
       background:#eef2f6;
@@ -54,6 +53,10 @@
       border:1px solid #cbd5e1;
       margin-right:8px;
       margin-top:6px;
+    }
+
+    input[type="text"]{
+      min-width:300px;
     }
 
     button{
@@ -121,9 +124,7 @@
       border-radius:8px;
       font-size:15px;
     }
-
   </style>
-
 </head>
 
 <body>
@@ -144,9 +145,21 @@
         accept=".txt,.csv"
       >
 
+      <br><br>
+
+      <label>
+        Vessel Name Manual Input
+      </label>
+
+      <input
+        type="text"
+        id="manualVesselName"
+        placeholder="Enter vessel name if file has no LOAD"
+      >
+
       <div class="note">
-        The platform automatically uses today's date
-        for Move Time conversion.
+        If the TXT has no LOAD instruction, Carrier will be extracted from Current Position before "-",
+        and Carrier Name will use the manual vessel name entered above.
       </div>
 
       <div id="fileStatus" class="status"></div>
@@ -212,7 +225,6 @@ let rawContent = "";
 let treatedData = [];
 
 const finalHeaders = [
-
   "Carrier",
   "Carrier Name",
   "Move Kind",
@@ -238,7 +250,6 @@ const finalHeaders = [
   "Move To",
   "Move From",
   "Move Distance"
-
 ];
 
 document
@@ -303,26 +314,101 @@ function treatXpsFile(text, refDate){
 
   if(lines.length <= 1) return [];
 
-  // Remove first TXT line (header)
+  // Remove first TXT line because it is the raw header
   const dataLines = lines.slice(1);
 
-  const rows = dataLines.map(line => {
+  const rawRows = dataLines.map(line => splitLine(line));
 
-    const c = splitLine(line);
+  const hasLoad = rawRows.some(row =>
+    String(row[2] || "").trim().toUpperCase() === "LOAD"
+  );
+
+  const firstLoadRow = rawRows.find(row =>
+    String(row[2] || "").trim().toUpperCase() === "LOAD"
+  );
+
+  const firstLoadCarrier =
+    firstLoadRow ? String(firstLoadRow[0] || "").trim() : "";
+
+  const firstLoadCarrierName =
+    firstLoadRow ? String(firstLoadRow[1] || "").trim() : "";
+
+  const manualVesselName =
+    document.getElementById("manualVesselName").value.trim();
+
+  if(!hasLoad && manualVesselName === ""){
+
+    alert("This file has no LOAD. Please enter the Vessel Name manually.");
+
+    return [];
+
+  }
+
+  const rows = rawRows.map(c => {
+
+    const rawKind =
+      String(c[2] || "").trim().toUpperCase();
 
     const moveKind =
-      String(c[2] || "")
-      .toUpperCase() === "DSCH"
+      rawKind === "DSCH"
       ? "Discharge"
       : "Load";
+
+    const currentPosition =
+      cleanPosition(c[6]);
+
+    const plannedPosition =
+      cleanPosition(c[7]);
+
+    let carrier = "";
+    let carrierName = "";
+
+    if(!hasLoad){
+
+      carrier =
+        getTextBeforeDash(currentPosition);
+
+      carrierName =
+        manualVesselName;
+
+    } else {
+
+      if(firstLoadCarrier === "VESSEL"){
+
+        if(moveKind === "Load"){
+
+          carrier =
+            getTextBeforeDash(plannedPosition);
+
+        } else {
+
+          carrier =
+            getTextBeforeDash(currentPosition);
+
+        }
+
+        carrierName =
+          manualVesselName || firstLoadCarrierName || "";
+
+      } else {
+
+        carrier =
+          firstLoadCarrier;
+
+        carrierName =
+          firstLoadCarrierName;
+
+      }
+
+    }
 
     return {
 
       "Carrier":
-        c[0] || "",
+        carrier,
 
       "Carrier Name":
-        c[1] || "",
+        carrierName,
 
       "Move Kind":
         moveKind,
@@ -337,10 +423,10 @@ function treatXpsFile(text, refDate){
         c[5] || "",
 
       "Current Position":
-        cleanPosition(c[6]),
+        currentPosition,
 
       "Planned Position":
-        cleanPosition(c[7]),
+        plannedPosition,
 
       "Queue":
         c[8] || "",
@@ -365,7 +451,7 @@ function treatXpsFile(text, refDate){
         c[13] || "",
 
       "Unit is Hazardous?":
-        c[14] === ""
+        String(c[14] || "").trim() === ""
         ? "false"
         : "true",
 
@@ -373,7 +459,7 @@ function treatXpsFile(text, refDate){
         c[15] || "",
 
       "Unit is live Reefer ?":
-        c[16] === "LRFR"
+        String(c[16] || "").trim() === "LRFR"
         ? "true"
         : "false",
 
@@ -381,12 +467,12 @@ function treatXpsFile(text, refDate){
         c[17] || "",
 
       "Unit Is OOG?":
-        c[18] === "Y"
+        String(c[18] || "").trim() === "Y"
         ? "true"
         : "false",
 
       "Freight Kind":
-        c[19] === "LCL"
+        String(c[19] || "").trim() === "LCL"
         ? "FCL"
         : c[19],
 
@@ -440,6 +526,19 @@ function cleanDistance(value){
     .replaceAll("M","")
     .replaceAll(".","")
     .trim();
+
+}
+
+function getTextBeforeDash(value){
+
+  const text =
+    String(value || "").trim();
+
+  if(text.includes("-")){
+    return text.split("-")[0].trim();
+  }
+
+  return text;
 
 }
 
@@ -715,12 +814,10 @@ function downloadTXT(){
 
   let txtContent = "";
 
-  // HEADER
   txtContent +=
     finalHeaders.join("\t") +
     "\n";
 
-  // DATA
   treatedData.forEach(row => {
 
     const values =
