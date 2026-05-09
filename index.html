@@ -334,7 +334,11 @@ function treatXpsFile(text, refDate){
     firstLoadRow ? String(firstLoadRow[1] || "").trim() : "";
 
   const manualVesselName =
-    document.getElementById("manualVesselName").value.trim();
+  document
+  .getElementById("manualVesselName")
+  .value
+  .trim()
+  .toUpperCase();
 
   if(!hasLoad && manualVesselName === ""){
 
