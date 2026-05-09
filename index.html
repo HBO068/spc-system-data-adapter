@@ -305,7 +305,9 @@ function treatFile(){
 
   }
 
-  const refDate = new Date();
+  const refDate =
+    getCapturedDateFromRawText(rawContent) ||
+    new Date();
 
   treatedData =
     treatXpsFile(rawContent, refDate);
@@ -318,6 +320,56 @@ function treatFile(){
     "Treatment completed: " +
     treatedData.length +
     " rows.";
+
+}
+
+function getCapturedDateFromRawText(text){
+
+  const lines = text
+    .split(/\r?\n/)
+    .filter(line => line.trim() !== "");
+
+  for(let i = lines.length - 1; i >= 0; i--){
+
+    const cols = splitLine(lines[i]);
+
+    for(let c = 0; c < cols.length; c++){
+
+      const value =
+        String(cols[c] || "").trim();
+
+      // Capture date format expected from XPS:
+      // MM/DD/YYYY
+      const match =
+        value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+      if(match){
+
+        const month =
+          Number(match[1]);
+
+        const day =
+          Number(match[2]);
+
+        const year =
+          Number(match[3]);
+
+        return new Date(
+          year,
+          month - 1,
+          day,
+          0,
+          0,
+          0
+        );
+
+      }
+
+    }
+
+  }
+
+  return null;
 
 }
 
