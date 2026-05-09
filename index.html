@@ -22,7 +22,10 @@
       box-shadow:0 4px 18px rgba(0,0,0,0.12);
       overflow:hidden;
     }
-
+#tableContainer{
+    overflow-x:auto;
+    max-width:100%;
+}
     .excel-header{
       background:#d9e2ec;
       border-top:3px solid #f97316;
@@ -334,7 +337,11 @@ function treatXpsFile(text, refDate){
     firstLoadRow ? String(firstLoadRow[1] || "").trim() : "";
 
   const manualVesselName =
-    document.getElementById("manualVesselName").value.trim();
+  document
+  .getElementById("manualVesselName")
+  .value
+  .trim()
+  .toUpperCase();
 
   if(!hasLoad && manualVesselName === ""){
 
