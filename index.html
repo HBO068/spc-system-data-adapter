@@ -332,13 +332,40 @@ function treatXpsFile(text, refDate){
   // Remove first TXT line because it is the raw header
   const dataLines = lines.slice(1);
 
-  const rawRows = dataLines.map(line => splitLine(line));
+  const rawRowsWithLines = dataLines.map(line => {
+    return {
+      line: line,
+      row: splitLine(line)
+    };
+  });
 
-  const hasLoad = rawRows.some(row =>
+  // Keep only real move rows.
+  // This removes the last capture date/time row and any other non-instruction rows.
+  const validRowsWithLines = rawRowsWithLines.filter(item => {
+
+    const kind =
+      String(item.row[2] || "")
+      .trim()
+      .toUpperCase();
+
+    return (
+      kind === "DSCH" ||
+      kind === "LOAD"
+    );
+
+  });
+
+  const validRows =
+    validRowsWithLines.map(item => item.row);
+
+  const validDataLines =
+    validRowsWithLines.map(item => item.line);
+
+  const hasLoad = validRows.some(row =>
     String(row[2] || "").trim().toUpperCase() === "LOAD"
   );
 
-  const firstLoadRow = rawRows.find(row =>
+  const firstLoadRow = validRows.find(row =>
     String(row[2] || "").trim().toUpperCase() === "LOAD"
   );
 
@@ -363,7 +390,7 @@ function treatXpsFile(text, refDate){
 
   }
 
-  const rows = rawRows.map(c => {
+  const rows = validRows.map(c => {
 
     const rawKind =
       String(c[2] || "").trim().toUpperCase();
@@ -457,7 +484,7 @@ function treatXpsFile(text, refDate){
         convertMoveTimeToExcelNumber(
           c[10],
           refDate,
-          dataLines
+          validDataLines
         ),
 
       "Pow Name":
