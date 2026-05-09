@@ -122,6 +122,7 @@
       padding:14px;
       border-radius:8px;
       font-size:15px;
+      flex-wrap:wrap;
     }
   </style>
 </head>
@@ -182,6 +183,21 @@
         <div>
           <strong>Total Moves:</strong>
           <span id="totalMoves">0</span>
+        </div>
+
+        <div>
+          <strong>Total Discharge:</strong>
+          <span id="totalDischarge">0</span>
+        </div>
+
+        <div>
+          <strong>Total Load:</strong>
+          <span id="totalLoad">0</span>
+        </div>
+
+        <div>
+          <strong>Total Restow:</strong>
+          <span id="totalRestow">0</span>
         </div>
 
         <div>
@@ -713,6 +729,31 @@ function updateSummary(){
   const totalMoves =
     treatedData.length;
 
+  const totalDischarge =
+    treatedData.filter(row =>
+      row["Move Kind"] === "Discharge"
+    ).length;
+
+  const totalLoad =
+    treatedData.filter(row =>
+      row["Move Kind"] === "Load"
+    ).length;
+
+  const totalRestow =
+    treatedData.filter(row => {
+
+      const category =
+        String(row["Category"] || "")
+        .trim()
+        .toUpperCase();
+
+      return (
+        category === "RESTOW" ||
+        category === "THROUGH"
+      );
+
+    }).length;
+
   const moveTimes =
     treatedData
       .map(row =>
@@ -742,6 +783,18 @@ function updateSummary(){
   document
   .getElementById("totalMoves")
   .textContent = totalMoves;
+
+  document
+  .getElementById("totalDischarge")
+  .textContent = totalDischarge;
+
+  document
+  .getElementById("totalLoad")
+  .textContent = totalLoad;
+
+  document
+  .getElementById("totalRestow")
+  .textContent = totalRestow;
 
   document
   .getElementById("operationsHours")
