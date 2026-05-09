@@ -1,877 +1,457 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>System Data Adapter</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    body{
-      font-family: Arial, sans-serif;
-      background:#eef2f6;
-      margin:0;
-      padding:24px;
-      color:#1f2937;
-    }
+<title>System Data Adapter</title>
 
-    .app{
-      max-width:1300px;
-      margin:auto;
-      background:white;
-      border-radius:6px;
-      box-shadow:0 4px 18px rgba(0,0,0,0.12);
-      overflow:hidden;
-    }
+<style>
 
-    .excel-header{
-      background:#d9e2ec;
-      border-top:3px solid #f97316;
-      border-bottom:1px solid #b8c3cf;
-      text-align:center;
-      padding:18px 10px 24px 10px;
-      font-size:22px;
-      font-weight:bold;
-      color:#111827;
-    }
+body{
+    font-family: Arial, sans-serif;
+    background:#eef2f7;
+    margin:0;
+    padding:24px;
+    color:#1f2937;
+}
 
-    .content{
-      padding:24px;
-    }
+.header{
+    background:#0f4c81;
+    color:white;
+    padding:20px;
+    border-radius:12px;
+    margin-bottom:20px;
+    text-align:center;
+    box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
 
-    .section{
-      margin-top:18px;
-      padding:18px;
-      border:1px solid #d1d5db;
-      border-radius:8px;
-      background:#fafcff;
-    }
+.container{
+    background:white;
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.08);
+}
 
-    input,
-    button{
-      padding:10px;
-      border-radius:6px;
-      border:1px solid #cbd5e1;
-      margin-right:8px;
-      margin-top:6px;
-    }
+input[type="file"]{
+    margin-bottom:15px;
+}
 
-    input[type="text"]{
-      min-width:300px;
-    }
+input[type="text"]{
+    padding:10px;
+    width:300px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    margin-left:10px;
+}
 
-    button{
-      background:#f97316;
-      color:white;
-      border:none;
-      cursor:pointer;
-      font-weight:bold;
-    }
+button{
+    background:#0f4c81;
+    color:white;
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-top:10px;
+    margin-right:10px;
+}
 
-    button:hover{
-      background:#ea580c;
-    }
+button:hover{
+    background:#0c3d67;
+}
 
-    textarea{
-      width:100%;
-      height:170px;
-      margin-top:10px;
-      border-radius:8px;
-      padding:10px;
-      font-family:Consolas, monospace;
-      box-sizing:border-box;
-    }
+.summary{
+    margin-top:20px;
+    padding:15px;
+    background:#f4f7fb;
+    border-radius:10px;
+}
 
-    table{
-      width:100%;
-      border-collapse:collapse;
-      margin-top:12px;
-      font-size:12px;
-    }
+.summary p{
+    margin:6px 0;
+    font-weight:bold;
+}
 
-    th,
-    td{
-      border:1px solid #d1d5db;
-      padding:6px;
-      text-align:left;
-      white-space:nowrap;
-    }
+#tableContainer{
+    overflow-x:auto;
+    max-width:100%;
+    margin-top:20px;
+}
 
-    th{
-      background:#d9e2ec;
-      color:#111827;
-      font-weight:bold;
-    }
+table{
+    border-collapse:collapse;
+    width:max-content;
+    min-width:100%;
+    font-size:12px;
+}
 
-    .status{
-      margin-top:10px;
-      font-weight:bold;
-      color:#047857;
-    }
+th{
+    background:#dbe4f0;
+    padding:8px;
+    border:1px solid #c7d2e0;
+    white-space:nowrap;
+}
 
-    .note{
-      color:#92400e;
-      font-size:13px;
-      margin-top:8px;
-    }
+td{
+    padding:6px;
+    border:1px solid #d1d5db;
+    white-space:nowrap;
+}
 
-    .summary-box{
-      margin-top:14px;
-      display:flex;
-      gap:30px;
-      background:#e5edf5;
-      border:1px solid #b8c3cf;
-      padding:14px;
-      border-radius:8px;
-      font-size:15px;
-    }
-  </style>
+</style>
 </head>
 
 <body>
 
-<div class="app">
+<div class="header">
+    <h1>System Data Adapter</h1>
+</div>
 
-  <div class="excel-header">
-    System Data Adapter
-  </div>
+<div class="container">
 
-  <div class="content">
+    <input type="file" id="fileInput" accept=".txt">
 
-    <div class="section">
+    <input type="text" id="manualVesselName" placeholder="Manual Vessel Name (If No LOAD Exists)">
 
-      <input
-        type="file"
-        id="fileInput"
-        accept=".txt,.csv"
-      >
+    <br>
 
-      <br><br>
+    <button onclick="processFile()">Process File</button>
 
-      <label>
-        Vessel Name Manual Input
-      </label>
+    <button onclick="downloadTXT()">Download TXT</button>
 
-      <input
-        type="text"
-        id="manualVesselName"
-        placeholder="Enter vessel name if file has no LOAD"
-      >
-
-      <div class="note">
-        If the TXT has no LOAD instruction, Carrier will be extracted from Current Position before "-",
-        and Carrier Name will use the manual vessel name entered above.
-      </div>
-
-      <div id="fileStatus" class="status"></div>
-
+    <div class="summary">
+        <p id="totalMoves">Total Moves: 0</p>
+        <p id="operationHours">Operations Hours: 0</p>
     </div>
 
-    <div class="section">
-
-      <button onclick="treatFile()">
-        Apply Treatment
-      </button>
-
-      <button onclick="downloadTXT()">
-        Download Treated TXT
-      </button>
-
-      <div id="treatmentStatus" class="status"></div>
-
-      <div class="summary-box">
-
-        <div>
-          <strong>Total Moves:</strong>
-          <span id="totalMoves">0</span>
-        </div>
-
-        <div>
-          <strong>Operations Hours:</strong>
-          <span id="operationsHours">0</span>
-        </div>
-
-      </div>
-
-    </div>
-
-    <div class="section">
-
-      <h3>Raw TXT Preview</h3>
-
-      <textarea
-        id="rawText"
-        readonly
-      ></textarea>
-
-    </div>
-
-    <div class="section">
-
-      <h3>Treated Data Preview</h3>
-
-      <div id="tableContainer">
-        No data treated yet.
-      </div>
-
-    </div>
-
-  </div>
+    <div id="tableContainer"></div>
 
 </div>
 
 <script>
 
-let rawContent = "";
-let treatedData = [];
+let finalData = [];
 
-const finalHeaders = [
-  "Carrier",
-  "Carrier Name",
-  "Move Kind",
-  "Conatiner Number",
-  "Length",
-  "Move Stage",
-  "Current Position",
-  "Planned Position",
-  "Queue",
-  "Sequence",
-  "Move Time",
-  "Pow Name",
-  "Planner",
-  "Unit Weight (kg)",
-  "Unit is Hazardous?",
-  "Unit POD",
-  "Unit is live Reefer ?",
-  "Unit is Special Stow?",
-  "Unit Is OOG?",
-  "Freight Kind",
-  "Category",
-  "Line Operator",
-  "Move To",
-  "Move From",
-  "Move Distance"
-];
+const carrierMap = {
+    "MAE":"MAERSK",
+    "MSC":"MSC",
+    "CMA":"CMA CGM",
+    "HLC":"HAPAG LLOYD",
+    "ONE":"ONE",
+    "EMC":"EVERGREEN"
+};
 
-document
-.getElementById("fileInput")
-.addEventListener("change", function(event){
-
-  const file = event.target.files[0];
-
-  if(!file) return;
-
-  const reader = new FileReader();
-
-  reader.onload = function(e){
-
-    rawContent = e.target.result;
-
-    document.getElementById("rawText").value =
-      rawContent.slice(0,20000);
-
-    document.getElementById("fileStatus").textContent =
-      "File loaded: " + file.name;
-
-    treatedData = [];
-
-  };
-
-  reader.readAsText(file);
-
-});
-
-function treatFile(){
-
-  if(!rawContent){
-
-    alert("Please upload a TXT file first.");
-
-    return;
-
-  }
-
-  const refDate = new Date();
-
-  treatedData =
-    treatXpsFile(rawContent, refDate);
-
-  renderTable();
-
-  updateSummary();
-
-  document.getElementById("treatmentStatus").textContent =
-    "Treatment completed: " +
-    treatedData.length +
-    " rows.";
-
+function excelDate(date){
+    return (date.getTime() / 86400000) + 25569;
 }
 
-function treatXpsFile(text, refDate){
+function parseMoveTime(moveTime){
 
-  const lines = text
-    .split(/\r?\n/)
-    .filter(line => line.trim() !== "");
+    if(!moveTime) return "";
 
-  if(lines.length <= 1) return [];
+    moveTime = moveTime.trim();
 
-  // Remove first TXT line because it is the raw header
-  const dataLines = lines.slice(1);
+    const days = {
+        "SU":0,
+        "MO":1,
+        "TU":2,
+        "WE":3,
+        "TH":4,
+        "FR":5,
+        "SA":6
+    };
 
-  const rawRows = dataLines.map(line => splitLine(line));
+    const dayCode = moveTime.substring(0,2);
 
-  const hasLoad = rawRows.some(row =>
-    String(row[2] || "").trim().toUpperCase() === "LOAD"
-  );
+    const timePart = moveTime.substring(2);
 
-  const firstLoadRow = rawRows.find(row =>
-    String(row[2] || "").trim().toUpperCase() === "LOAD"
-  );
+    let hh = 0;
+    let mm = 0;
 
-  const firstLoadCarrier =
-    firstLoadRow ? String(firstLoadRow[0] || "").trim() : "";
+    if(timePart.length === 3){
+        hh = parseInt(timePart.substring(0,1));
+        mm = parseInt(timePart.substring(1,3));
+    }
+    else if(timePart.length === 4){
+        hh = parseInt(timePart.substring(0,2));
+        mm = parseInt(timePart.substring(2,4));
+    }
 
-  const firstLoadCarrierName =
-    firstLoadRow ? String(firstLoadRow[1] || "").trim() : "";
+    const today = new Date();
 
-  const manualVesselName =
-  document
-  .getElementById("manualVesselName")
-  .value
-  .trim()
-  .toUpperCase();
+    const currentDay = today.getDay();
 
-  if(!hasLoad && manualVesselName === ""){
+    let diff = days[dayCode] - currentDay;
 
-    alert("This file has no LOAD. Please enter the Vessel Name manually.");
+    const targetDate = new Date(today);
 
-    return [];
+    targetDate.setDate(today.getDate() + diff);
 
-  }
+    targetDate.setHours(hh);
+    targetDate.setMinutes(mm);
+    targetDate.setSeconds(0);
 
-  const rows = rawRows.map(c => {
+    return excelDate(targetDate);
+}
 
-    const rawKind =
-      String(c[2] || "").trim().toUpperCase();
+function formatDate(excelNumber){
 
-    const moveKind =
-      rawKind === "DSCH"
-      ? "Discharge"
-      : "Load";
+    const jsDate = new Date((excelNumber - 25569) * 86400000);
 
-    const currentPosition =
-      cleanPosition(c[6]);
+    const dd = String(jsDate.getDate()).padStart(2,'0');
+    const mm = String(jsDate.getMonth()+1).padStart(2,'0');
+    const yyyy = jsDate.getFullYear();
 
-    const plannedPosition =
-      cleanPosition(c[7]);
+    const hh = String(jsDate.getHours()).padStart(2,'0');
+    const min = String(jsDate.getMinutes()).padStart(2,'0');
 
-    let carrier = "";
-    let carrierName = "";
+    return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
+}
 
-    if(!hasLoad){
+function processFile(){
 
-      carrier =
-        getTextBeforeDash(currentPosition);
+    const file = document.getElementById('fileInput').files[0];
 
-      carrierName =
-        manualVesselName;
+    if(!file){
+        alert("Please select a TXT file.");
+        return;
+    }
 
-    } else {
+    const reader = new FileReader();
 
-      if(firstLoadCarrier === "VESSEL"){
+    reader.onload = function(e){
 
-        if(moveKind === "Load"){
+        const text = e.target.result;
 
-          carrier =
-            getTextBeforeDash(plannedPosition);
+        const lines = text.split(/\r?\n/).filter(x => x.trim() !== "");
 
-        } else {
+        const rows = lines.map(line => line.split("\t"));
 
-          carrier =
-            getTextBeforeDash(currentPosition);
+        rows.shift();
+
+        const headers = rows[0];
+
+        rows.shift();
+
+        const loadRow = rows.find(r =>
+            (r[headers.indexOf("Move Kind")] || "").toUpperCase() === "LOAD"
+        );
+
+        let vesselCarrier = "";
+        let vesselName = "";
+
+        if(loadRow){
+
+            vesselCarrier = loadRow[headers.indexOf("Carrier")] || "";
+
+            vesselName = loadRow[headers.indexOf("Carrier Name")] || "";
+
+        }else{
+
+            const firstRow = rows[0];
+
+            const currentPosition = firstRow[headers.indexOf("Current Position")] || "";
+
+            vesselCarrier = currentPosition.split("-")[0];
+
+            vesselName = document.getElementById("manualVesselName").value.toUpperCase();
 
         }
 
-        carrierName =
-          manualVesselName || firstLoadCarrierName || "";
+        finalData = [];
 
-      } else {
+        rows.forEach(r => {
 
-        carrier =
-          firstLoadCarrier;
+            let moveKind = r[headers.indexOf("Move Kind")] || "";
 
-        carrierName =
-          firstLoadCarrierName;
+            moveKind = moveKind.toUpperCase() === "DSCH" ? "Discharge" : "Load";
 
-      }
+            const moveTimeRaw = r[headers.indexOf("Move Time")] || "";
 
-    }
+            const moveTimeExcel = parseMoveTime(moveTimeRaw);
 
-    return {
+            const currentPosition = (r[headers.indexOf("Current Position")] || "")
+                .replaceAll("?","")
+                .replaceAll(".","");
 
-      "Carrier":
-        carrier,
+            const moveFrom = (r[headers.indexOf("Move From")] || "")
+                .replaceAll("?","")
+                .replaceAll(".","");
 
-      "Carrier Name":
-        carrierName,
+            const moveTo = (r[headers.indexOf("Move To")] || "")
+                .replaceAll("?","")
+                .replaceAll(".","");
 
-      "Move Kind":
-        moveKind,
+            const carrierCode = vesselCarrier.substring(0,3);
 
-      "Conatiner Number":
-        c[3] || "",
+            const treated = {
 
-      "Length":
-        c[4] || "",
+                "Carrier": vesselCarrier,
 
-      "Move Stage":
-        c[5] || "",
+                "Carrier Name": vesselName.toUpperCase(),
 
-      "Current Position":
-        currentPosition,
+                "Move Kind": moveKind,
 
-      "Planned Position":
-        plannedPosition,
+                "Conatiner Number": r[headers.indexOf("Conatiner Number")] || "",
 
-      "Queue":
-        c[8] || "",
+                "Length": r[headers.indexOf("Length")] || "",
 
-      "Sequence":
-        c[9] || "",
+                "Move Stage": r[headers.indexOf("Move Stage")] || "",
 
-      "Move Time":
-        convertMoveTimeToExcelNumber(
-          c[10],
-          refDate,
-          dataLines
-        ),
+                "Current Position": currentPosition,
 
-      "Pow Name":
-        c[11] || "",
+                "Planned Position": r[headers.indexOf("Planned Position")] || "unknown",
 
-      "Planner":
-        c[12] || "",
+                "Queue": r[headers.indexOf("Queue")] || "",
 
-      "Unit Weight (kg)":
-        c[13] || "",
+                "Sequence": r[headers.indexOf("Sequence")] || "",
 
-      "Unit is Hazardous?":
-        String(c[14] || "").trim() === ""
-        ? "false"
-        : "true",
+                "Move Time": moveTimeExcel,
 
-      "Unit POD":
-        c[15] || "",
+                "Pow Name": r[headers.indexOf("Pow Name")] || "",
 
-      "Unit is live Reefer ?":
-        String(c[16] || "").trim() === "LRFR"
-        ? "true"
-        : "false",
+                "Planner": r[headers.indexOf("Planner")] || "",
 
-      "Unit is Special Stow?":
-        c[17] || "",
+                "Unit Weight (kg)": r[headers.indexOf("Unit Weight (kg)")] || "",
 
-      "Unit Is OOG?":
-        String(c[18] || "").trim() === "Y"
-        ? "true"
-        : "false",
+                "Unit is Hazardous?":
+                    (r[headers.indexOf("Unit is Hazardous?")] || "") !== ""
+                    ? "true"
+                    : "false",
 
-      "Freight Kind":
-        String(c[19] || "").trim() === "LCL"
-        ? "FCL"
-        : c[19],
+                "Unit POD": r[headers.indexOf("Unit POD")] || "",
 
-      "Category":
-        c[20] || "",
+                "Unit is live Reefer ?":
+                    (r[headers.indexOf("Unit is live Reefer ?")] || "") === "LRFR"
+                    ? "true"
+                    : "false",
 
-      "Line Operator":
-        c[21] || "",
+                "Unit is Special Stow?":
+                    r[headers.indexOf("Unit is Special Stow?")] || "",
 
-      "Move To":
-        cleanPosition(c[22]),
+                "Unit Is OOG?":
+                    (r[headers.indexOf("Unit Is OOG?")] || "") === "Y"
+                    ? "true"
+                    : "false",
 
-      "Move From":
-        cleanPosition(c[23]),
+                "Freight Kind":
+                    (r[headers.indexOf("Freight Kind")] || "") === "LCL"
+                    ? "FCL"
+                    : (r[headers.indexOf("Freight Kind")] || ""),
 
-      "Move Distance":
-        cleanDistance(c[24])
+                "Category": r[headers.indexOf("Category")] || "",
+
+                "Line Operator": r[headers.indexOf("Line Operator")] || "",
+
+                "Move To": moveTo,
+
+                "Move From": moveFrom,
+
+                "Move Distance":
+                    (r[headers.indexOf("Move Distance")] || "")
+                    .replace("M","")
+                    .replace(".","")
+            };
+
+            finalData.push(treated);
+
+        });
+
+        buildTable();
+
+        calculateSummary();
 
     };
 
-  });
-
-  return rows;
-
+    reader.readAsText(file);
 }
 
-function splitLine(line){
+function buildTable(){
 
-  if(line.includes("\t"))
-    return line.split("\t");
+    const container = document.getElementById("tableContainer");
 
-  if(line.includes(";"))
-    return line.split(";");
+    container.innerHTML = "";
 
-  return line.split(",");
+    if(finalData.length === 0) return;
 
-}
+    let html = "<table><thead><tr>";
 
-function cleanPosition(value){
+    Object.keys(finalData[0]).forEach(h => {
+        html += `<th>${h}</th>`;
+    });
 
-  return String(value || "")
-    .replaceAll("?","")
-    .replaceAll(".","")
-    .trim();
+    html += "</tr></thead><tbody>";
 
-}
+    finalData.forEach(r => {
 
-function cleanDistance(value){
+        html += "<tr>";
 
-  return String(value || "")
-    .replaceAll("M","")
-    .replaceAll(".","")
-    .trim();
+        Object.values(r).forEach(v => {
+            html += `<td>${v}</td>`;
+        });
 
-}
-
-function getTextBeforeDash(value){
-
-  const text =
-    String(value || "").trim();
-
-  if(text.includes("-")){
-    return text.split("-")[0].trim();
-  }
-
-  return text;
-
-}
-
-function normalizeMoveTimeCode(moveTime){
-
-  let text = String(moveTime || "")
-    .replace("+","")
-    .trim()
-    .toUpperCase();
-
-  if(text === "") return "";
-
-  const day =
-    text.substring(0,2);
-
-  const timePart =
-    text.substring(2)
-    .padStart(4,"0");
-
-  return day + timePart;
-
-}
-
-function convertMoveTimeToExcelNumber(
-  moveTime,
-  refDate,
-  allRows
-){
-
-  const code =
-    normalizeMoveTimeCode(moveTime);
-
-  if(!code) return "";
-
-  const dayCode =
-    code.substring(0,2);
-
-  const hour =
-    Number(code.substring(2,4));
-
-  const minute =
-    Number(code.substring(4,6));
-
-  const dayOffsets =
-    buildCompactDayOffsets(allRows);
-
-  if(!(dayCode in dayOffsets))
-    return "";
-
-  const baseDate =
-    new Date(refDate);
-
-  baseDate.setHours(0,0,0,0);
-
-  const resultDate =
-    new Date(baseDate);
-
-  resultDate.setDate(
-    baseDate.getDate() +
-    dayOffsets[dayCode]
-  );
-
-  resultDate.setHours(
-    hour,
-    minute,
-    0,
-    0
-  );
-
-  return dateToExcelSerial(resultDate);
-
-}
-
-function buildCompactDayOffsets(allRows){
-
-  const dayOrder = [
-    "SU",
-    "MO",
-    "TU",
-    "WE",
-    "TH",
-    "FR",
-    "SA"
-  ];
-
-  const usedDays = [...new Set(
-
-    allRows
-      .map(line => {
-
-        const cols =
-          splitLine(line);
-
-        return normalizeMoveTimeCode(
-          cols[10] || ""
-        ).substring(0,2);
-
-      })
-      .filter(day =>
-        dayOrder.includes(day)
-      )
-
-  )];
-
-  if(usedDays.length === 0)
-    return {};
-
-  let bestOffsets = {};
-  let bestSpan = 999;
-
-  usedDays.forEach(startDay => {
-
-    const startIndex =
-      dayOrder.indexOf(startDay);
-
-    const offsets = {};
-
-    let maxOffset = 0;
-
-    usedDays.forEach(day => {
-
-      const dayIndex =
-        dayOrder.indexOf(day);
-
-      let offset =
-        dayIndex - startIndex;
-
-      if(offset < 0)
-        offset += 7;
-
-      offsets[day] = offset;
-
-      if(offset > maxOffset)
-        maxOffset = offset;
+        html += "</tr>";
 
     });
 
-    if(maxOffset < bestSpan){
+    html += "</tbody></table>";
 
-      bestSpan = maxOffset;
-
-      bestOffsets = offsets;
-
-    }
-
-  });
-
-  return bestOffsets;
-
+    container.innerHTML = html;
 }
 
-function dateToExcelSerial(date){
+function calculateSummary(){
 
-  const excelEpoch =
-    new Date(1899,11,30);
+    document.getElementById("totalMoves").innerHTML =
+        "Total Moves: " + finalData.length;
 
-  const millisecondsPerDay =
-    24 * 60 * 60 * 1000;
+    const moveTimes = finalData
+        .map(x => x["Move Time"])
+        .filter(x => x !== "");
 
-  return (
-    (date - excelEpoch) /
-    millisecondsPerDay
-  );
+    const maxMove = Math.max(...moveTimes);
 
-}
+    const minMove = Math.min(...moveTimes);
 
-function updateSummary(){
+    const operationHours = ((maxMove - minMove) * 24).toFixed(1);
 
-  const totalMoves =
-    treatedData.length;
-
-  const moveTimes =
-    treatedData
-      .map(row =>
-        Number(row["Move Time"])
-      )
-      .filter(v =>
-        !Number.isNaN(v) &&
-        v > 0
-      );
-
-  let operationsHours = 0;
-
-  if(moveTimes.length > 0){
-
-    const minMoveTime =
-      Math.min(...moveTimes);
-
-    const maxMoveTime =
-      Math.max(...moveTimes);
-
-    operationsHours =
-      (maxMoveTime - minMoveTime)
-      * 24;
-
-  }
-
-  document
-  .getElementById("totalMoves")
-  .textContent = totalMoves;
-
-  document
-  .getElementById("operationsHours")
-  .textContent =
-    operationsHours.toFixed(1);
-
-}
-
-function renderTable(){
-
-  if(treatedData.length === 0){
-
-    document
-    .getElementById("tableContainer")
-    .innerHTML =
-      "No data treated yet.";
-
-    return;
-
-  }
-
-  const previewRows =
-    treatedData.slice(0,50);
-
-  let html =
-    "<table><tr>";
-
-  finalHeaders.forEach(header => {
-
-    html +=
-      "<th>" +
-      header +
-      "</th>";
-
-  });
-
-  html += "</tr>";
-
-  previewRows.forEach(row => {
-
-    html += "<tr>";
-
-    finalHeaders.forEach(header => {
-
-      html +=
-        "<td>" +
-        (row[header] || "") +
-        "</td>";
-
-    });
-
-    html += "</tr>";
-
-  });
-
-  html += "</table>";
-
-  document
-  .getElementById("tableContainer")
-  .innerHTML = html;
-
+    document.getElementById("operationHours").innerHTML =
+        "Operations Hours: " + operationHours;
 }
 
 function downloadTXT(){
 
-  if(treatedData.length === 0){
-
-    alert("No treated data.");
-
-    return;
-
-  }
-
-  let txtContent = "";
-
-  txtContent +=
-    finalHeaders.join("\t") +
-    "\n";
-
-  treatedData.forEach(row => {
-
-    const values =
-      finalHeaders.map(header => {
-
-        return String(
-          row[header] || ""
-        ).trim();
-
-      });
-
-    txtContent +=
-      values.join("\t") +
-      "\n";
-
-  });
-
-  const blob = new Blob(
-
-    [txtContent],
-
-    {
-      type:
-      "text/plain;charset=utf-8;"
+    if(finalData.length === 0){
+        alert("No data to export.");
+        return;
     }
 
-  );
+    const headers = Object.keys(finalData[0]);
 
-  const link =
-    document.createElement("a");
+    let txt = headers.join("\t") + "\n";
 
-  link.href =
-    URL.createObjectURL(blob);
+    finalData.forEach(r => {
 
-  const firstRow =
-    treatedData[0] || {};
+        const row = headers.map(h => r[h]);
 
-  const carrier =
-    (firstRow["Carrier"] || "Unknown")
-    .trim();
+        txt += row.join("\t") + "\n";
 
-  const carrierName =
-    (firstRow["Carrier Name"] || "Unknown")
-    .trim();
+    });
 
-  link.download =
-    `${carrier} ${carrierName} Update.txt`;
+    const carrier = finalData[0]["Carrier"] || "Carrier";
 
-  link.click();
+    const vessel = finalData[0]["Carrier Name"] || "Vessel";
 
+    const fileName = `${carrier} ${vessel} Update.txt`;
+
+    const blob = new Blob([txt], {type:"text/plain"});
+
+    const a = document.createElement("a");
+
+    a.href = URL.createObjectURL(blob);
+
+    a.download = fileName;
+
+    a.click();
 }
 
 </script>
